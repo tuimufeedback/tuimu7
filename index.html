@@ -1,134 +1,121 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PRE-Client — Parallel Redirect Engine (Client)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRE-Client</title>
 <style>
-  :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#0b1220);color:#fff}
-  .card{width:94%;max-width:520px;padding:24px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));box-shadow:0 8px 30px rgba(2,6,23,0.6);text-align:center}
-  h1{margin:0 0 6px;font-size:18px}
-  p{margin:6px 0 16px;color:#cbd5e1;font-size:14px}
-  .btn{display:inline-block;padding:12px 18px;border-radius:10px;background:#ff7a59;color:#111;font-weight:700;text-decoration:none;box-shadow:0 6px 18px rgba(255,122,89,0.18)}
-  .small{font-size:13px;color:#94a3b8;margin-top:10px}
-  a.inline{color:#7ee3bd}
+html,body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  background:#000;
+}
+
+/* ===== UI TEXT ===== */
+.loading-text{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  color:#fff;
+  font-size:22px;
+  font-weight:600;
+  letter-spacing:0.5px;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  opacity:0.9;
+  user-select:none;
+}
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>PRE-Client — Parallel Redirect Engine</h1>
-    <p>Trang này tự động mở ứng dụng Shopee trên Android (intent) hoặc chuyển về link iOS. Nếu không tự mở, bấm nút bên dưới.</p>
-    <a id="manual" class="btn" href="#" onclick="manualOpen();return false;">Mở thủ công</a>
-    <div class="small">Nếu bạn dùng GitHub Pages, đặt file này làm index.html và gắn link GitHub lên Beacons.</div>
-  </div>
+
+<!-- UI TEXT -->
+<div class="loading-text">Đợi 1 chút !!!</div>
 
 <script>
-/*
- PRE-Client (single-file) Parallel Redirect Engine
- - Multi-path redirect: hidden iframe, window.open, intent href, chrome navigate, anchor click
- - Fast immediate attempts + short retries
- - iOS opens direct s.shopee.vn URL (keeps tracking code intact)
- - Android attempts multiple techniques in parallel to maximize chance to escape WebView
- - WARNING: No method can bypass TikTok SafeView 100% (server-side). This maximizes client-side success.
-*/
-
-// =========== CONFIG ===========
-// Put your Shopee short code here (the rút gọn Shopee code)
+// ================= CONFIG =================
 const shopeeCode = "5fhxCr0NIv";
-const iosUrl = `https://s.shopee.vn/${shopeeCode}`;
+const shopeeUrl  = `https://s.shopee.vn/${shopeeCode}`;
+
+// 👉 LINK TIKTOK AFF / PROFILE / VIDEO
+const tiktokAffUrl = "https://www.tiktok.com/view/product/1731135272913242730?_svg=1&chain_key=%7B%22t%22%3A1%2C%22k%22%3A%22000000000000000007578535186801231623%22%2C%22sc%22%3A%22copy%22%7D&encode_params=MIIBUwQMZxaZLEzlwtU0KQOKBIIBLweDAovBiNUL-AhvADiqKLBHQAn-VMzIGuMGWkNoGw4HwX5cxZ3YUMxn3bdOuf-L0LrYfyOK4tGC11gE9ld_ZeslwQxWYRDW4SAnlUT9UJHqFn_e8oTtWnmreKgkBAP2jge6U3q-PIONmfS0vKrplg0vfL7x5w5owjO_X7eIzAZUd-5THo1IxuFcksq51RckHreVAxc4LVRYFZjcRWeCswv9n7bRLryOsK_D91Zitwpz8kz-XX3j4GtCOQvq1V5i2sv-nRiBfomElFa9Ln4I5eLoaHXxhtKtYxjXc4CVQO1_esvCfqD13mf6uyhtQZcMxvZ8UVyQlbTm8JwjxCUnKIYRR9RVwprSI9FDLgQ1FT6rKu_QKkRIhBCUJkHQlILnIlW8t_axdY11AcIu_AbNMwQQFe0XkHCnaZ7iHGjaaJ4aGg%3D%3D&scene=pdp&share_app_id=1180&share_region=VN&timestamp=1764515245&trackParams=%7B%22enter_from_info%22%3A%22product_share_outside%22%2C%22source_page_type%22%3A%22product_share%22%2C%22enable_shop_tab_popup%22%3A1%7D&use_land_page=1&utm_campaign=client_share&utm_source=copy";
+
+// Android intents
 const androidIntent = `intent://s.shopee.vn/${shopeeCode}#Intent;scheme=https;package=com.shopee.vn;end`;
-// Chrome navigate scheme (attempt to open Chrome directly)
-const chromeNavigate = `googlechrome://navigate?url=${encodeURIComponent(iosUrl)}`;
-// Another variant: chrome intent with fallback url param (some devices support)
-const chromeIntent = `intent://${'s.shopee.vn'}/${shopeeCode}#Intent;package=com.android.chrome;scheme=https;S.browser_fallback_url=${encodeURIComponent(iosUrl)};end`;
+const chromeNavigate = `googlechrome://navigate?url=${encodeURIComponent(shopeeUrl)}`;
+const chromeIntent = `intent://s.shopee.vn/${shopeeCode}#Intent;package=com.android.chrome;scheme=https;S.browser_fallback_url=${encodeURIComponent(shopeeUrl)};end`;
 
-// Timeouts (ms)
-const FIRST_DELAY = 10;    // immediate
-const RETRY_SHORT = 120;   // short retry
-const RETRY_LONG = 700;    // long retry before final fallback
-const FINAL_FALLBACK = 1400; // fallback to web if intents fail
+// ================= STATE =================
+let shopeeFired = false;
+let tiktokFired = false;
 
-// =========== DETECTION ===========
-const ua = navigator.userAgent || "";
-const isIOS = /iphone|ipad|ipod/i.test(ua);
-const isAndroid = /android/i.test(ua);
+// ================= DEVICE =================
+const ua = navigator.userAgent.toLowerCase();
+const isIOS = /iphone|ipad|ipod/.test(ua);
+const isAndroid = /android/.test(ua);
 
-// helper: safe open with try/catch
-function safeOpen(url) {
-  try { window.location.href = url; } catch(e){}
+// ================= UTILS =================
+function safeOpen(url){
+  try{ location.href = url }catch(e){}
 }
 
-// Manual fallback open (button)
-function manualOpen(){
-  if (isIOS) safeOpen(iosUrl);
-  else safeOpen(androidIntent);
-}
+// ================= PHASE 1: SHOPEE =================
+function openShopee(){
+  if(shopeeFired) return;
+  shopeeFired = true;
 
-// =========== PARALLEL STRATEGY ===========
-function runPreClient() {
-  if (isIOS) {
-    // For iOS, open the canonical Shopee short link (keeps tracking)
-    // Do a small delay to allow this action to be treated as user-initiated when possible
-    setTimeout(()=>{ window.location.replace(iosUrl); }, FIRST_DELAY+10);
+  if(isIOS){
+    location.replace(shopeeUrl);
     return;
   }
 
-  // For Android: attempt multiple opens in parallel/sequence to maximize chance
-  try {
-    // 1) Hidden iframe opening intent (works on some WebViews)
-    const iframe = document.createElement('iframe');
-    iframe.style.width = "1px";
-    iframe.style.height = "1px";
-    iframe.style.border = "0";
-    iframe.style.position = "absolute";
-    iframe.style.left = "-9999px";
-    iframe.src = androidIntent;
+  try{
+    const iframe=document.createElement("iframe");
+    iframe.style.display="none";
+    iframe.src=androidIntent;
     document.body.appendChild(iframe);
-  } catch(e){}
+  }catch(e){}
 
-  // 2) window.open to a new tab/window (some WebViews handle auxiliary windows differently)
-  try {
-    const win = window.open(androidIntent, '_blank');
-    if (win) {
-      try { win.focus(); } catch(e) {}
-    }
-  } catch(e){}
+  try{ window.open(androidIntent,"_blank"); }catch(e){}
 
-  // 3) immediate location change (intent)
-  setTimeout(()=>{ safeOpen(androidIntent); }, FIRST_DELAY);
+  setTimeout(()=>safeOpen(androidIntent), 5);
+  setTimeout(()=>safeOpen(chromeNavigate), 40);
+  setTimeout(()=>safeOpen(chromeIntent), 90);
 
-  // 4) Chrome navigate attempt (opens Chrome if available)
-  setTimeout(()=>{ safeOpen(chromeNavigate); }, FIRST_DELAY + 30);
+  setTimeout(()=>safeOpen(androidIntent), 150);
+  setTimeout(()=>safeOpen(chromeNavigate), 220);
 
-  // 5) chromeIntent variant as another attempt
-  setTimeout(()=>{ safeOpen(chromeIntent); }, FIRST_DELAY + 80);
+  setTimeout(()=>safeOpen(androidIntent), 700);
+  setTimeout(()=>safeOpen(chromeIntent), 760);
 
-  // 6) anchor + click event (simulate user click on an anchor)
-  try {
-    const a = document.createElement('a');
-    a.href = androidIntent;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    const clickEv = new MouseEvent('click', {bubbles:true, cancelable:true, view:window});
-    setTimeout(()=>{ a.dispatchEvent(clickEv); }, FIRST_DELAY + 120);
-  } catch(e){}
-
-  // 7) Second round retries (short)
-  setTimeout(()=>{ try { safeOpen(androidIntent); } catch(e) {} try { safeOpen(chromeNavigate); } catch(e) {} }, RETRY_SHORT);
-
-  // 8) Third round (long)
-  setTimeout(()=>{ try { safeOpen(androidIntent); } catch(e) {} try { safeOpen(chromeIntent); } catch(e) {} }, RETRY_LONG);
-
-  // 9) final fallback -> open canonical web link (keeps tracking) so Shopee at least gets click
-  setTimeout(()=>{ try { window.location.replace(iosUrl); } catch(e) { safeOpen(iosUrl); } }, FINAL_FALLBACK);
+  setTimeout(()=>location.replace(shopeeUrl), 1400);
 }
 
-// run on user gesture where possible; but we also attempt auto-run (best-effort)
-document.addEventListener('DOMContentLoaded', ()=>{ setTimeout(runPreClient, 6); });
+// ================= PHASE 2: TIKTOK =================
+function openTikTokAff(){
+  if(tiktokFired) return;
+  tiktokFired = true;
+  location.replace(tiktokAffUrl);
+}
 
-// Also provide a manual button link handler
-document.getElementById('manual').addEventListener('click', manualOpen);
+// ================= RESUME DETECT =================
+document.addEventListener("visibilitychange", ()=>{
+  if(
+    document.visibilityState === "visible" &&
+    shopeeFired &&
+    !tiktokFired
+  ){
+    setTimeout(openTikTokAff, 600);
+  }
+});
+
+// ================= RUN =================
+document.addEventListener("DOMContentLoaded", ()=>{
+  setTimeout(openShopee, 10);
+});
 </script>
+
 </body>
 </html>
