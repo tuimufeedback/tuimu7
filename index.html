@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PRE-Client</title>
+
 <style>
 html,body{
   margin:0;
@@ -11,35 +12,45 @@ html,body{
   width:100%;
   height:100%;
   background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont;
 }
 
-/* ===== UI TEXT ===== */
-.loading-text{
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  color:#fff;
+#box{
+  text-align:center;
+  display:none;
+}
+
+#text{
   font-size:22px;
-  font-weight:600;
-  letter-spacing:0.5px;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
-  opacity:0.9;
-  user-select:none;
+  margin-bottom:16px;
+}
+
+#btn{
+  padding:12px 24px;
+  font-size:16px;
+  border-radius:8px;
+  border:none;
+  background:#fff;
+  color:#000;
 }
 </style>
 </head>
+
 <body>
 
-<!-- UI TEXT -->
-<div class="loading-text">Đợi 1 chút !!!</div>
+<div id="box">
+  <div id="text">Đợi 1 chút !!!</div>
+  <button id="btn" disabled>Quay lại TikTok</button>
+</div>
 
 <script>
 // ================= CONFIG =================
 const shopeeCode = "5fhxCr0NIv";
 const shopeeUrl  = `https://s.shopee.vn/${shopeeCode}`;
-
-// 👉 LINK TIKTOK AFF / PROFILE / VIDEO
 const tiktokAffUrl = "https://www.tiktok.com/view/product/1731135272913242730?_svg=1&chain_key=%7B%22t%22%3A1%2C%22k%22%3A%22000000000000000007578535186801231623%22%2C%22sc%22%3A%22copy%22%7D&encode_params=MIIBUwQMZxaZLEzlwtU0KQOKBIIBLweDAovBiNUL-AhvADiqKLBHQAn-VMzIGuMGWkNoGw4HwX5cxZ3YUMxn3bdOuf-L0LrYfyOK4tGC11gE9ld_ZeslwQxWYRDW4SAnlUT9UJHqFn_e8oTtWnmreKgkBAP2jge6U3q-PIONmfS0vKrplg0vfL7x5w5owjO_X7eIzAZUd-5THo1IxuFcksq51RckHreVAxc4LVRYFZjcRWeCswv9n7bRLryOsK_D91Zitwpz8kz-XX3j4GtCOQvq1V5i2sv-nRiBfomElFa9Ln4I5eLoaHXxhtKtYxjXc4CVQO1_esvCfqD13mf6uyhtQZcMxvZ8UVyQlbTm8JwjxCUnKIYRR9RVwprSI9FDLgQ1FT6rKu_QKkRIhBCUJkHQlILnIlW8t_axdY11AcIu_AbNMwQQFe0XkHCnaZ7iHGjaaJ4aGg%3D%3D&scene=pdp&share_app_id=1180&share_region=VN&timestamp=1764515245&trackParams=%7B%22enter_from_info%22%3A%22product_share_outside%22%2C%22source_page_type%22%3A%22product_share%22%2C%22enable_shop_tab_popup%22%3A1%7D&use_land_page=1&utm_campaign=client_share&utm_source=copy";
 
 // Android intents
@@ -49,19 +60,13 @@ const chromeIntent = `intent://s.shopee.vn/${shopeeCode}#Intent;package=com.andr
 
 // ================= STATE =================
 let shopeeFired = false;
-let tiktokFired = false;
+let resumeTime = 0;
 
 // ================= DEVICE =================
 const ua = navigator.userAgent.toLowerCase();
 const isIOS = /iphone|ipad|ipod/.test(ua);
-const isAndroid = /android/.test(ua);
 
-// ================= UTILS =================
-function safeOpen(url){
-  try{ location.href = url }catch(e){}
-}
-
-// ================= PHASE 1: SHOPEE =================
+// ================= SHOPEE =================
 function openShopee(){
   if(shopeeFired) return;
   shopeeFired = true;
@@ -80,36 +85,29 @@ function openShopee(){
 
   try{ window.open(androidIntent,"_blank"); }catch(e){}
 
-  setTimeout(()=>safeOpen(androidIntent), 5);
-  setTimeout(()=>safeOpen(chromeNavigate), 40);
-  setTimeout(()=>safeOpen(chromeIntent), 90);
-
-  setTimeout(()=>safeOpen(androidIntent), 150);
-  setTimeout(()=>safeOpen(chromeNavigate), 220);
-
-  setTimeout(()=>safeOpen(androidIntent), 700);
-  setTimeout(()=>safeOpen(chromeIntent), 760);
-
+  setTimeout(()=>location.href=androidIntent, 5);
+  setTimeout(()=>location.href=chromeNavigate, 40);
+  setTimeout(()=>location.href=chromeIntent, 90);
   setTimeout(()=>location.replace(shopeeUrl), 1400);
 }
 
-// ================= PHASE 2: TIKTOK =================
-function openTikTokAff(){
-  if(tiktokFired) return;
-  tiktokFired = true;
-  location.replace(tiktokAffUrl);
-}
-
-// ================= RESUME DETECT =================
+// ================= RESUME =================
 document.addEventListener("visibilitychange", ()=>{
-  if(
-    document.visibilityState === "visible" &&
-    shopeeFired &&
-    !tiktokFired
-  ){
-    setTimeout(openTikTokAff, 600);
+  if(document.visibilityState === "visible" && shopeeFired){
+    resumeTime = Date.now();
+    document.getElementById("box").style.display="block";
+
+    // Mở nút sau 3s để Shopee chốt session
+    setTimeout(()=>{
+      document.getElementById("btn").disabled = false;
+    }, 3000);
   }
 });
+
+// ================= BTN =================
+document.getElementById("btn").onclick = ()=>{
+  location.replace(tiktokAffUrl);
+};
 
 // ================= RUN =================
 document.addEventListener("DOMContentLoaded", ()=>{
